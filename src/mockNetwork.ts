@@ -95,6 +95,43 @@ const mockNetwork = (responses: Response[] = [], debug: boolean = false) => {
   const fetch = global.window.fetch
 
   fetch.mockImplementation(request => mockFetch(responses, request, debug))
+  // XMLHttpRequest.mockImplementation(request => mockXHR(responses, request, debug))
+
+  const XMLHttpRequest = global.XMLHttpRequest as any
+  XMLHttpRequest.mockImplementation(() => {
+    let _method: string
+    let _url: string
+
+    const xhr: any = {
+      open: (method: string, url: string) => {
+        _method = method
+        _url = url
+      },
+      send: () => {
+        const request = {
+          method: _method,
+          url: _url,
+        }
+
+        const responseMatchingRequest = responses.find(
+          getRequestMatcher(request),
+        )
+
+        console.log('responseMatchingRequest', responseMatchingRequest)
+
+        xhr.status = 200
+        xhr.statusText = 'OK'
+        xhr.responseText = 'OK'
+        xhr.response = responseMatchingRequest?.responseBody
+        xhr.readyState = 4
+        // xhr.onload && xhr.onload()
+        xhr.onreadystatechange && xhr.onreadystatechange()
+      },
+    }
+    return xhr
+  })
+
+  fetch.mockImplementation(request => mockFetch(responses, request, debug))
 }
 
 const printMultipleResponsesWarning = (response: Response) => {
